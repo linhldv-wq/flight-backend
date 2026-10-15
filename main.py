@@ -4,7 +4,6 @@ import airportsdata
 
 app = FastAPI(title="Flight Booking API - Global", version="1.0.0")
 
-# Cấu hình CORS cho phép Frontend từ Hostinger kết nối vào
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -18,20 +17,12 @@ airports = airportsdata.load("IATA")
 
 @app.get("/")
 def read_root():
-    return {
-        "status": "online",
-        "message": "Welcome to Flight Booking API!",
-        "endpoints": {
-            "get_airports": "/api/airports",
-            "search_flights": "/api/flights?origin=SGN&destination=HAN&date=2026-10-15"
-        }
-    }
+    return {"status": "online", "message": "Welcome to Flight Booking API!"}
 
 @app.get("/api/airports")
 def get_airports(q: str = Query(None, description="Tìm kiếm theo tên hoặc mã sân bay")):
     result = []
     for code, data in airports.items():
-        # Lọc các sân bay thương mại có đầy đủ thông tin thành phố và quốc gia
         if data.get("city") and data.get("country"):
             item = {
                 "code": code,
@@ -39,13 +30,16 @@ def get_airports(q: str = Query(None, description="Tìm kiếm theo tên hoặc 
                 "name": data["name"],
                 "country": data["country"]
             }
+            # Nếu người dùng có nhập từ khóa tìm kiếm
             if q:
-                if q.lower() in code.lower() or q.lower() in data["city"].lower() or q.lower() in data["name"].lower():
+                q_lower = q.lower()
+                if q_lower in code.lower() or q_lower in data["city"].lower() or q_lower in data["name"].lower():
                     result.append(item)
             else:
                 result.append(item)
-    # Giới hạn trả về tối đa 100 kết quả để giao diện tải mượt mà
-    return result[:100]
+                
+    # Nếu không tìm kiếm gì, trả về tối đa 500 sân bay phổ biến thay vì giới hạn 100 như trước
+    return result[:500]
 
 @app.get("/api/flights")
 def search_flights(
@@ -53,7 +47,6 @@ def search_flights(
     destination: str = Query(..., description="Mã sân bay đến"),
     date: str = Query(..., description="Ngày đi YYYY-MM-DD")
 ):
-    # Dữ liệu mẫu chuyến bay trả về dựa trên chặng bay bạn chọn
     sample_flights = [
         {
             "id": "FL001",
